@@ -1,0 +1,40 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Local-only working files
+.local/
+tmp/
+temp/
+
+# Python cache / tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node tooling
+node_modules/
+
+# Private evaluation data must never be committed to this public repository
+private-evals/
+evals-private/
+real-evals/
+runs-private/
