@@ -48,8 +48,6 @@ CN_job-requirement-fit-analysis/
 - `docs/DEVELOPMENT.md`：版本、Branch、Commit、Batch 和开发流程规范。
 - `references/ISOLATED-EVALUATOR-PROTOCOL.md`：v0.2 的隔离匹配运行时协议。
 
-真实简历、真实 JD、私人测试输出和其他 Evaluation 数据不存放在本仓库中。
-
 ## License
 
 本项目以 source-available 形式提供，并采用 **PolyForm Noncommercial License 1.0.0**。
