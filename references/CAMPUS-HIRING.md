@@ -1,4 +1,4 @@
-# Campus Hiring（v0.2）
+# Campus Hiring
 
 Campus Hiring 指面向即将毕业或当届毕业 Candidate 的正式校招、应届招聘岗位。它是招聘模式，不是能力高低评价。仅在 `SKILL.md` 路由到 Campus 时加载；共享证据、缺口、匹配等级和 Formal Candidate Matching 执行规则仍由 `SKILL.md` 与 `ISOLATED-EVALUATOR-PROTOCOL.md` 决定。
 

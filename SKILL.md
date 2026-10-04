@@ -1,31 +1,29 @@
 ---
 name: CN_job-requirement-fit-analysis
 
-description: 分析中国大陆校招与实习招聘中的职位描述（Job Description, JD），解释岗位职责和任职要求；当用户提供候选人背景或简历时，进一步判断岗位匹配度、资格条件、能力缺口和简历表达缺口。适用于用户希望理解招聘岗位、判断是否适合、确认需要补充哪些能力或了解简历应如何针对岗位调整的场景。
+description: 分析中国大陆校招、实习与社招岗位的职位描述（Job Description, JD），解释岗位职责和任职要求；当用户提供候选人背景或简历时，进一步判断岗位匹配度、资格条件、能力缺口和简历表达缺口。适用于用户希望理解招聘岗位、判断是否适合、确认需要补充哪些能力或了解简历应如何针对岗位调整的场景。
 
 ---
 
-<!-- skill-version: v0.2.1 -->
+<!-- skill-version: v0.3.0 -->
 
 正式输出直接从专业标题、岗位一句话解读或快速结论开始。
 
-## v0.2 Recruitment Mode 检测与路由
+## v0.3 Recruitment Mode 检测与路由
 
-Campus Hiring、Internship Hiring、Experienced Hiring 是三个概念上独立的招聘模式。本版本只实现 Campus 与 Internship；Experienced 留待 v0.3。不得将前两者合并为一个 Early-Career mode，也不得套用社招职业阶段模型。
+Campus Hiring、Internship Hiring、Experienced Hiring 是三个并列的招聘模式。不得将三者合并为 Early-Career 或 General Hiring，也不得把模式识别与资格强度混为一谈。
 
-对每个 atomic JD，按以下优先级确定招聘模式：①用户明确声明的求职目标（如校招/应届正式工作，或日常/暑期/寒假实习）；②没有用户声明时，JD 明示的校招/应届毕业生/graduate recruitment/new graduate/campus recruitment，或实习/实习生/internship/off-cycle/summer/winter internship；③两者均未明确时，才按下述中国大陆本科/硕士阶段作 fallback inference；④仍不能确定则为 `UNKNOWN / INFORMATION_INSUFFICIENT`。不能因为 Candidate 是学生就覆盖 JD 明示模式。若 JD 内部自相矛盾，先标记“JD 内部不一致，待向招聘方确认”，不得强行选边。
+对每个 atomic JD，按以下优先级确定模式：①用户明确目标：校招/应届正式工作→Campus，日常/暑期/寒假实习→Internship，社招/社会招聘/有经验跳槽/按社招分析→Experienced；②用户未声明时，JD 明示校招/应届/graduate/campus recruitment→Campus，实习/internship/off-cycle/summer/winter internship→Internship，社会招聘/社招/Experienced Hire/experienced recruitment→Experienced；③仍未明确时，JD 的“X 年以上相关工作经验”、正式工作经验或相关工作经验优先等明确职业经验信号，在没有 Campus 或 Internship 信号时→Experienced。工作经验优先可作为 mode signal，但不自动成为 Hard Qualification。JD 内部自相矛盾时，标记“JD 内部不一致，待向招聘方确认”，不得强行选边。
 
-阶段推断仅适用于普通四年制本科与三年制硕士：直接给出的大一/大二/大三→Internship，大四→Campus；研一/研二→Internship，研三→Campus。直接说明的当前年级优先；入学、毕业日期仅在该简化模型中能明确推出阶段时使用。明确的特殊学制标记 `OUTSIDE_CURRENT_STAGE_INFERENCE_SCOPE`；博士阶段标记 `OUT_OF_CURRENT_MODE_INFERENCE_SCOPE`，均不得硬套模型。
+如用户、JD 和职业经验信号均无法确认模式，使用 `UNKNOWN_REQUIRES_USER_CONFIRMATION`：JD-only 可继续岗位层面解读；Formal Candidate Matching 停止，并询问“你希望把这个岗位按实习、校招还是社招进行分析？”。不得再根据 Candidate 年级自动选择 Campus 或 Internship，也不得猜测 Experienced。
 
 若用户声明与 JD 明示模式相反，输出开头列明用户目标、JD 模式、`MODE_CONFLICT` 及当前 JD 不符合目标，第一轮停止正式完整匹配；不输出 overall `match_level`、模式资格判断或完整个人建议。只有用户后续明确要求继续，才进入 `CAPABILITY_ONLY_OVERRIDE`：可比较职责、技能、Candidate 证据和能力/证据缺口，必须标明“Capability-only comparison，非正式招聘资格判断”；忽略届别、学生身份、实习时长、每周天数等纯模式资格。涉及 Candidate 的能力对比仍须遵守下方隔离协议。
 
-若模式为 `UNKNOWN`，在正式分析前说明用户目标和 JD 模式均不明确、阶段信息不足、模式资格无法可靠判断；继续共享的 Candidate Evidence → Capability → JD Requirement 分析。模式专属项记 `NOT DETERMINABLE / INFORMATION GAP`；不得因模式未知判低匹配、判资格不符或停止全部分析。若其他证据足够，仍按全局规则校准能力匹配。
+Reference 路由：Campus 加载 [CAMPUS-HIRING](references/CAMPUS-HIRING.md)；Internship 加载 [INTERNSHIP-HIRING](references/INTERNSHIP-HIRING.md)；Experienced 加载 [EXPERIENCED-HIRING](references/EXPERIENCED-HIRING.md)。JD-only 只加载对应 Mode Reference 与本文件；任何 Formal Candidate Matching（含 capability-only）还须加载 [隔离匹配评估协议](references/ISOLATED-EVALUATOR-PROTOCOL.md)。Mode Reference 只定义专属资格、条件与证据解释；Global 证据、缺口、四档匹配等级和输出契约仍以本文件为准。
 
-Reference 路由：Campus 加载 [CAMPUS-HIRING](references/CAMPUS-HIRING.md)；Internship 加载 [INTERNSHIP-HIRING](references/INTERNSHIP-HIRING.md)；Unknown 不加载两者的模式假设。JD-only 只加载对应模式 Reference 与本文件；任何 Formal Candidate Matching（含 capability-only）还须加载 [隔离匹配评估协议](references/ISOLATED-EVALUATOR-PROTOCOL.md)。两种路由是独立、可组合的维度。模式 Reference 只定义专属资格与条件，Global 证据、缺口、四档匹配等级及输出契约仍以本文件为准。
+将 mode、学生身份、毕业窗口、availability、院校类别、工作年限、近期职业证据或 JD 内部歧义等可识别的不确定性，放在正式 match level 前简洁提示。缺失 Candidate 信息不等于不符合；Qualification、Capability、用户偏好和信息缺口始终分开。所有模式均按 Relevance、Directness、Depth、Verifiability 检查实际内容，再建立 Experience → Capability → JD Requirement 证据链；证据类型本身不自动证明能力，不设机械分值。
 
-将 mode、学生身份、毕业窗口、availability、院校类别或 JD 内部歧义等可识别的不确定性，放在正式 match level 前用求职工具语气简洁提示。缺失 Candidate 信息不等于不符合；Qualification、Capability、用户偏好和信息缺口始终分开。Campus 与 Internship 的候选人证据都按 Relevance、Directness、Depth、Verifiability 检查实际内容，再建立 Experience → Capability → JD Requirement 证据链。实习、个人/课程项目、科研、课程、竞赛、社团、志愿经历、真实全职工作、证书与自述技能均可作为输入，但类型本身不自动证明能力，不设机械分值。Daily、Seasonal、Campus 的面试竞争差异不改变匹配阈值；不进行面试难度评分。
-
-## v0.2.0 隔离匹配执行
+## v0.3.0 隔离匹配执行
 
 **Formal Candidate Matching 的 routing：**当同时存在用户本次提供的原始 Candidate 输入和当前 JD，且用户要求任何个人化分析（包括匹配度、投递资格、能力匹配、证据/信息缺口、简历诊断或个性化补强）时，必须在输出正式个人匹配结论前读取并遵守[隔离匹配评估协议](references/ISOLATED-EVALUATOR-PROTOCOL.md)。JD-only 请求不启动 Formal Candidate Matching：仍按下文解读 JD、分类要求和说明待确认信息，不生成个人 `match_level`、Candidate 能力缺口或个人化补强建议。
 
@@ -61,7 +59,7 @@ Formal Candidate Matching 的 binding invariants 是：每次 Match Request 只�
 
 # 二、目标
 
-帮助中国大陆校招与实习求职者：
+帮助中国大陆校招、实习与社招求职者：
 
 1. 读懂招聘岗位；
 2. 理解招聘方真正想要什么；
@@ -108,16 +106,15 @@ Formal Candidate Matching 的 binding invariants 是：每次 Match Request 只�
 
 判断是否使用本 Skill 时，以**用户真实意图**为主，而不是依赖固定关键词。
 
-# 四、v0.2 适用范围
+# 四、当前版本适用范围
 
-v0.2 主要面向：
+当前版本正式支持三个 Recruitment Mode：
 
-- 校园招聘；
-- 应届生招聘；
-- 实习招聘；
-- 暑期实习；
-- 日常实习；
-- 面向在校生或应届毕业生的招聘。
+- Internship Hiring；
+- Campus Hiring；
+- Experienced Hiring。
+
+三个模式分别处理实习、校园招聘和社会招聘场景；模式判断与规则按本 Skill 的路由和对应 Reference 执行。
 
 用户的毕业年份和招聘届数不得写死。
 
@@ -131,9 +128,7 @@ v0.2 主要面向：
 
 都应根据用户输入和招聘方要求动态判断。
 
-未来版本可以进一步扩展到社会招聘，但 v0.2 不针对有多年正式工作经验的社招场景进行专门优化。
-
-# 五、v0.2 不处理的任务
+# 五、当前版本不处理的任务
 
 本 Skill 当前不负责：
 
@@ -436,7 +431,7 @@ JD 明确写在“加分项”或“优先项”中的条件（包括审美、�
 
 # 八、资格判断
 
-资格判断先按 Recruitment Mode 加载对应 Reference。Campus 检查招聘方定义的届别/毕业窗口及明确的学历、专业、院校限制；Internship 检查 JD 明示的学生身份与 availability 条件。JD 没有要求时不得补出门槛，Candidate 未提供时标记信息缺口并继续其他分析。工作地点、Base、办公方式等仍按全局岗位条件处理。
+资格判断先按 Recruitment Mode 加载对应 Reference。Campus 检查招聘方定义的届别/毕业窗口及明确的学历、专业、院校限制；Internship 检查 JD 明示的学生身份与 availability 条件；Experienced 按 JD 明示的工作年限或职业经验条件、近期职业证据与责任深度判断。Experienced 的年限风险或职业阶段差距须与能力匹配分开。JD 没有要求时不得补出门槛，Candidate 未提供时标记信息缺口并继续其他分析。工作地点、Base、办公方式等仍按全局岗位条件处理。
 
 **资格判断与能力匹配必须分开。**
 
@@ -748,7 +743,7 @@ JD 明确写在“加分项”或“优先项”中的条件（包括审美、�
 - 哪些真实事实、职责、成果或方法值得补充；
 - 哪些属于真正能力缺口，而不是文字表达问题。
 
-v0.2 不负责完整重写整份简历。
+当前版本不负责完整重写整份简历。
 
 可以提供：
 
@@ -880,7 +875,7 @@ v0.2 不负责完整重写整份简历。
 
 # 十九、输出格式
 
-正常正式分析输出一份双层 Report。`MODE_CONFLICT` 第一轮及 Internship 学生身份明确不符时，依照前述停止规则，不生成完整正式 match level 或完整双层个人报告。`UNKNOWN` 模式不停止共享证据分析。
+正常正式分析输出一份双层 Report。`MODE_CONFLICT` 第一轮及 Internship 学生身份明确不符时，依照前述停止规则，不生成完整正式 match level 或完整双层个人报告。`UNKNOWN_REQUIRES_USER_CONFIRMATION` 时，JD-only 可继续岗位解读；Formal Candidate Matching 停止并请求用户确认模式。
 
 ## 第一层：快速结论
 

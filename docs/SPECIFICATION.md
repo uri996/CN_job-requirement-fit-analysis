@@ -17,17 +17,19 @@ SKILL.md 是实际运行实现。
 当前开发阶段：
 
 - Baseline：v0.1.0
-- 当前发布版本：v0.2.1
+- 发布基线：v0.2.1
+- 当前发布版本：v0.3.0
 
-v0.2.0 主要面向中国大陆：
+v0.3.0 面向中国大陆：
 
 - 校园招聘；
 - 应届生招聘；
 - 暑期实习；
 - 日常实习；
-- 面向在校生和近期毕业生的招聘。
+- 面向在校生和近期毕业生的招聘；
+- 社会招聘及具备工作经验的岗位。
 
-Campus Hiring 与 Internship Hiring 是独立招聘模式；Experienced Hiring 是第三个独立概念，留待 v0.3。v0.2 不实现社招规则。模式检测、冲突、未知和各自资格条件见 [招聘模式规则](RECRUITMENT-MODE-RULES.md)。
+Campus Hiring、Internship Hiring 与 Experienced Hiring 是三个独立招聘模式。模式检测按用户明确目标、JD 明示信号、无 Campus/Internship 信号时的职业经验信号依次进行；没有可靠信号时，JD-only 可继续，Formal Candidate Matching 要求用户确认模式。模式检测、冲突、未知和各自资格条件见 [招聘模式规则](RECRUITMENT-MODE-RULES.md)。
 
 ---
 
@@ -390,7 +392,7 @@ Skill 至少支持两种运行模式。
 
 # 8. 投递资格判断
 
-按 Campus / Internship 模式分别检查 JD 明示的毕业窗口、学生身份、学历/专业限制和实习 availability 等适用条件，不能把两个模式合成一套默认硬资格；详见 [招聘模式规则](RECRUITMENT-MODE-RULES.md)。
+按 Campus、Internship 或 Experienced 模式分别检查 JD 明示的毕业窗口、学生身份、availability、学历/专业限制、工作年限或职业经验条件，不能把三个模式合成一套默认硬资格；详见 [招聘模式规则](RECRUITMENT-MODE-RULES.md)。Experienced 的年限、职业阶段、责任深度与近期专业证据必须与能力匹配分开。
 
 如果 JD 没有提供对应信息：
 
@@ -549,7 +551,7 @@ Low Match 必须根据当前 **atomic JD** 的主要职责覆盖判断：只有�
 
 # 11. 简历诊断
 
-v0.2.0 不负责完整重写简历。
+当前版本不负责完整重写简历。
 
 可以：
 
@@ -697,7 +699,7 @@ v0.2.0 不负责完整重写简历。
 
 # 16. Scope Boundary
 
-v0.2.0 不负责：
+当前版本不负责：
 
 - 自动搜索岗位；
 - 公司背景调查；
