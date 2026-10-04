@@ -1,6 +1,6 @@
 # 隔离匹配评估协议
 
-本协议定义 v0.2.0 中候选人与 JD 的正式匹配如何执行。它只约束执行边界、记录和汇总；`SKILL.md` 中的全部业务匹配规则、匹配等级阈值和三个调试规则继续适用，不能由本协议改写。
+本协议定义 v0.2.1 中候选人与 JD 的正式匹配如何执行。它只约束执行边界、记录和汇总；`SKILL.md` 中的全部业务匹配规则、匹配等级阈值和三个调试规则继续适用，不能由本协议改写。
 
 ## 1. 适用范围与运行状态
 
@@ -43,10 +43,24 @@ Runner 的完整允许输入清单仅为：
 1. 必要的 Skill instructions；
 2. 本次 Match Request 唯一的 immutable Candidate Snapshot，或能解析为其完整原始 payload 的不可变 artifact 引用；
 3. 当前唯一一个由 normalization 形成、未经概述或删节的 atomic JD；
-4. 固定的 Result schema；
-5. 为创建、隔离、结束 Runner 所必需的系统级运行指令。
+4. 由 Parent / Orchestrator 规范化的 `request_control`；
+5. 固定的 Result schema；
+6. 为创建、隔离、结束 Runner 所必需的系统级运行指令。
 
-Runner 的禁止输入包括但不限于：父聊天全文或摘要；此前轮次上下文；其他 JD 或其片段/摘要/元数据；此前 Result、`match_level`、`qualification_status`、Registry 内容或错误记录；Candidate summary；Parent interpretation；前一个 Runner 的 Candidate 摘要；Aggregator summary；按岗位重新改写的 Candidate；为节省 token 自动压缩后的 Candidate；父编排器、Job Splitter、Aggregator 或用户对先前结论的总结、偏好、猜测、排序或目标等级；其他 Runner 的输出；批次排名、比较标准或 Canary 的预期答案。不得将任何禁止项隐藏在系统级运行指令、例子、变量名、引用文本或工具返回中。
+`request_control` 是当前 Match Request 的结构化执行参数，不是 Candidate data、用户偏好、历史上下文、Parent summary 或此前 Result。它只允许以下无自由文本 schema：
+
+```text
+request_control {
+  analysis_scope: formal_match | capability_only_override,
+  override_source: null | explicit_user_followup
+}
+```
+
+正常正式匹配必须使用 `analysis_scope: formal_match` 与 `override_source: null`。只有 Parent / Orchestrator 已在同一 Candidate 与 atomic JD 的当前交互流程中确认 `MODE_CONFLICT`，且用户在后续轮次明确要求继续能力 / 相关性比较时，才可设置 `analysis_scope: capability_only_override` 与 `override_source: explicit_user_followup`。Runner 不得根据 Candidate、JD、Mode Conflict 或任何历史信息自行开启 override；也不得接收完整用户消息、前轮对话、前轮 Assistant 输出、此前 Result 或 Parent 对这些内容的总结来决定 scope。
+
+`request_control` 不属于 Candidate Snapshot。不同 `analysis_scope` 或 `override_source` 不得改变 `candidate_snapshot_sha256` 或 `candidate_sha256`。
+
+Runner 的禁止输入包括但不限于：父聊天全文或摘要；此前轮次上下文；其他 JD 或其片段/摘要/元数据；此前 Result、`match_level`、`qualification_status`、Registry 内容或错误记录；Candidate summary；Parent interpretation；前一个 Runner 的 Candidate 摘要；Aggregator summary；按岗位重新改写的 Candidate；为节省 token 自动压缩后的 Candidate；父编排器、Job Splitter、Aggregator 或用户对先前结论的总结、偏好、猜测、排序或目标等级；其他 Runner 的输出；批次排名、比较标准或 Canary 的预期答案。唯一例外是上述无自由文本的 `request_control`；不得将任何其他禁止项隐藏在该字段、系统级运行指令、例子、变量名、引用文本或工具返回中。
 
 Runner 开始匹配前，必须从其实际读取的 Candidate payload 计算 `candidate_sha256`，从其实际读取的当前 atomic JD 计算 `jd_sha256`。`candidate_sha256` 必须等于 Registry 中本次 Match Request 的 `candidate_snapshot_sha256`；不相等时不得执行或保留正式匹配结论，必须返回输入审计并记录 `input_contract_status: INVALID`、`result_status: INVALID_INPUT`。
 
@@ -54,13 +68,13 @@ Runner 不得从 Registry 读取信息，不得请求或接受“参考前一个
 
 ### 编排器
 
-编排器只负责能力预检、在每个 Match Request 开始时创建一次 immutable Candidate Snapshot、调用 JD Normalizer 与 Job Splitter、为每个 `JD_ID` 创建隔离 Runner、把同一 Snapshot 与当前 atomic JD 交给 Runner、执行一次受限重试、验证输入哈希、写入 Registry，以及在全部结果结束后调用 Aggregator。编排器不得为不同 JD 生成 Candidate 变体。编排器可以整理展示格式和保存结果，但不得重判证据、推导新的个人结论，或改写任一 Result 的 `match_level`。
+编排器只负责能力预检、在每个 Match Request 开始时创建一次 immutable Candidate Snapshot、调用 JD Normalizer 与 Job Splitter、为每个 `JD_ID` 创建隔离 Runner、设置并传入合规 `request_control`、把同一 Snapshot 与当前 atomic JD 交给 Runner、执行一次受限重试、验证输入哈希、写入 Registry，以及在全部结果结束后调用 Aggregator。编排器不得为不同 JD 生成 Candidate 变体，也不得以自由文本或 Parent 解释替代 `request_control`。编排器可以整理展示格式和保存结果，但不得重判证据、推导新的个人结论，或改写任一 Result 的 `match_level`。
 
 个案发生执行错误时，编排器仅对该 `JD_ID` 使用相同的允许输入新建一次 fresh Runner 重试。第二次失败后记录 `ERROR` 并继续处理其他 JD；不得把错误个案的内容提供给其他 Runner。重试也必须满足所有隔离和输入限制。
 
 ### Aggregator
 
-Aggregator 只能在全部独立 Match Result 已记录后读取 Result Registry，且正式比较只能读取 `input_contract_status: VALID` 且 `result_status: VALID` 的 Result。`INVALID_INPUT` 与 `ERROR` 可以在运行状态中报告，但不得进入正式汇总、比较或排序。Aggregator 可以汇总、比较、排序和识别有效 Result 的共性缺口，但不能启动或重跑匹配，不能新增或重判单个岗位的证据，不能改写任何 individual `match_level`、`qualification_status` 或 Result 正文。
+Aggregator 只能在全部独立 Match Result 已记录后读取 Result Registry，且正式比较只能读取 `input_contract_status: VALID`、`result_status: VALID` 且 `analysis_scope: formal_match` 的 Result。`capability_only_override`、`INVALID_INPUT` 与 `ERROR` 可以在运行状态中报告，但不得进入正式汇总、比较或排序。Aggregator 可以汇总、比较、排序和识别有效正式 Result 的共性缺口，但不能启动或重跑匹配，不能新增或重判单个岗位的证据，不能改写任何 individual `match_level`、`qualification_status` 或 Result 正文。
 
 汇总报告必须明显分为两类：
 
@@ -73,11 +87,11 @@ Aggregator 只能在全部独立 Match Result 已记录后读取 Result Registry
 2. 编排器从用户本次提供的完整原始 Candidate 创建一次 immutable Candidate Snapshot，记录来源并计算 `candidate_snapshot_sha256`。
 3. JD Normalizer 仅将原始招聘页面规范化为一个或多个 atomic JD，复制共同要求并保留方向特有要求，不读取 Candidate。
 4. Job Splitter 为每个 atomic JD 固定 `JD_ID`，保留内容和源元数据。
-5. 每个 `JD_ID` 启动一个 fresh Match Runner，并读取同一 Snapshot 与当前唯一 atomic JD。可并发或分批运行，但每个 Runner 的输入边界完全相同且彼此隔离。
+5. 编排器为每个 `JD_ID` 设置符合第 2 节的 `request_control`，然后启动 fresh Match Runner；Runner 读取同一 Snapshot、当前唯一 atomic JD 与该控制对象。可并发或分批运行，但每个 Runner 的输入边界完全相同且彼此隔离。
 6. Runner 对实际 Candidate payload 与 atomic JD 计算 SHA-256；编排器验证 Candidate 哈希等于 Snapshot 哈希，并验证同一 Match Request 的所有 Runner 使用相同 `candidate_sha256`。
 7. 输入契约通过时记录 `input_contract_status: VALID`、`result_status: VALID`；Candidate 哈希不一致时记录 `input_contract_status: INVALID`、`result_status: INVALID_INPUT`，丢弃正式匹配正文。
 8. 单个 Runner 的首次执行错误只重试一次；第二次错误以 `result_status: ERROR` 写入 Registry，之后继续其他条目。重试仍使用同一 Snapshot。
-9. 当且仅当每个 `JD_ID` 都有 `VALID`、`INVALID_INPUT` 或 `ERROR` Registry 条目时，Aggregator 才可读取 Registry，且只聚合 `VALID` Result。
+9. 当且仅当每个 `JD_ID` 都有 `VALID`、`INVALID_INPUT` 或 `ERROR` Registry 条目时，Aggregator 才可读取 Registry，且只聚合 `analysis_scope: formal_match` 的 `VALID` Result。
 
 同聊连续单 JD 不是同一 Runner 的连续任务。即使 Candidate 未变，每个新 JD 也必须获得一个新的 Runner。多 JD batch 与逐次提交同一组 JD 应遵循相同的单 JD 隔离规则；可改变并发度，不可改变任一 Runner 的输入集合。
 
@@ -90,7 +104,8 @@ Result {
   JD_ID: string,
   company: string | "未提供",
   title: string | "未提供",
-  match_level: "高匹配" | "部分匹配" | "低匹配" | "信息不足" | "部分匹配偏低（当前材料下）" | "低匹配（当前材料下）",
+  analysis_scope: formal_match | capability_only_override,
+  match_level: "高匹配" | "部分匹配" | "低匹配" | "信息不足" | "部分匹配偏低（当前材料下）" | "低匹配（当前材料下）" | null,
   qualification_status: string,
   direct_evidence: array,
   transferable_evidence: array,
@@ -103,12 +118,13 @@ Result {
 }
 ```
 
-Result 中的 `match_level` 必须保留现有业务规则的四种基础等级（高匹配、部分匹配、低匹配、信息不足），并允许使用 `SKILL.md` 已定义、用于保守校准的合规限定表达，尤其是“部分匹配偏低（当前材料下）”与“低匹配（当前材料下）”。限定表达不是新的匹配等级，也不得改变既有阈值、证据要求或等级校准。资格状态与能力匹配必须保持分离。`direct_evidence`、`transferable_evidence`、`information_gaps`、`resume_evidence_gaps` 和 `confirmed_gaps` 必须遵守现有证据与缺口规则，不能因隔离架构而改变阈值。`resume_evidence_gaps` 记录当前简历对核心能力或强要求没有可核验证据的筛选缺口：该字段不等于候选人不会，也不得写入 `confirmed_gaps`；但必须使该要求在当前材料下不获得筛选信用，并按 `SKILL.md` 影响 `match_level`。优先项缺失以及未提供的地点、到岗或实习周期不得作为该字段的负面核心证据。
+每个 Result 必须记录与输入一致的 `analysis_scope`。当其为 `formal_match` 时，`match_level` 必须保留现有业务规则的四种基础等级（高匹配、部分匹配、低匹配、信息不足），并允许使用 `SKILL.md` 已定义、用于保守校准的合规限定表达，尤其是“部分匹配偏低（当前材料下）”与“低匹配（当前材料下）”。限定表达不是新的匹配等级，也不得改变既有阈值、证据要求或等级校准。当其为 `capability_only_override` 时，`match_level` 必须为 `null`，输出必须明确这只是忽略 Recruitment Mode-specific eligibility 的 Candidate 能力 / 经历与 JD 工作内容相关性比较，不能输出正式 overall match level、Campus cohort eligibility、Internship student-status eligibility、实习时长、每周天数或其他纯模式资格判断。资格状态与能力匹配必须保持分离。`direct_evidence`、`transferable_evidence`、`information_gaps`、`resume_evidence_gaps` 和 `confirmed_gaps` 必须遵守现有证据与缺口规则，不能因隔离架构而改变阈值。`resume_evidence_gaps` 记录当前简历对明确核心职责、核心能力或强要求没有可核验证据的筛选缺口：只要当前材料无证据就必须记录，即使 overall `match_level` 为“信息不足”，且允许同一项同时作为 `information_gaps`；该字段不等于候选人不会，也不得仅据无证据写入 `confirmed_gaps`。该要求在当前材料下不获得筛选信用，并按 `SKILL.md` 影响正式匹配的 `match_level`。优先项缺失以及未提供的地点、到岗或实习周期不得作为该字段的负面核心证据。
 
 Result Registry 至少保存上述每个字段，并为运行控制额外保存：
 
 ```text
 runner_id: string | null
+analysis_scope: formal_match | capability_only_override
 candidate_source: string
 candidate_snapshot_sha256: string
 candidate_sha256: string
@@ -122,11 +138,11 @@ input_audit_id: string
 
 其中 `candidate_sha256` 必须从真正传入并由该 Runner 读取的 Candidate payload 计算，`jd_sha256` 必须从该 Runner 实际读取的当前 atomic JD 计算；不同 atomic JD 应具有各自对应的 `jd_sha256`。同一个 Match Request 的所有 Runner 必须具有完全相同的 `candidate_sha256`，并与 `candidate_snapshot_sha256` 相等。`runner_id` 仅在 runtime 可获得时记录，否则为 `null`。
 
-`INVALID_INPUT` 条目仍保留全部输入审计字段，但业务结果字段和 `match_level` 使用 `null`，不得进入 Aggregator 的正式比较。`ERROR` 条目仍保留 `JD_ID`、`run_id`、`runner_id`、`result_status`、`attempt_count`、`error_code` 和输入审计关联；无法产生的业务字段使用 `null`，不得编造分析或匹配等级。Registry 是单向记录：它绝不可反向传给新的 Runner，也不得成为 Candidate、JD 或系统指令的一部分。
+`INVALID_INPUT` 条目仍保留全部输入审计字段，但业务结果字段和 `match_level` 使用 `null`，不得进入 Aggregator 的正式比较。`ERROR` 条目仍保留 `JD_ID`、`run_id`、`runner_id`、`analysis_scope`、`result_status`、`attempt_count`、`error_code` 和输入审计关联；无法产生的业务字段使用 `null`，不得编造分析或匹配等级。Registry 是单向记录：它绝不可反向传给新的 Runner，也不得成为 Candidate、JD 或系统指令的一部分。
 
 ## 5. 输入审计
 
-每次 Runner 调用都必须产生一个不可变的输入审计记录，至少包含：`input_audit_id`、`run_id`、`JD_ID`、`runner_id`（如可获得）、尝试次数、`candidate_source`、`candidate_snapshot_sha256`、从 Runner 实际 Candidate payload 计算的 `candidate_sha256`、从 Runner 实际 atomic JD 计算的 `jd_sha256`、`input_contract_status`、`result_status`、原始招聘页面与方向的来源标识、允许输入清单、隔离能力验证结果和创建时间标识。
+每次 Runner 调用都必须产生一个不可变的输入审计记录，至少包含：`input_audit_id`、`run_id`、`JD_ID`、`runner_id`（如可获得）、尝试次数、完整 `request_control`、`candidate_source`、`candidate_snapshot_sha256`、从 Runner 实际 Candidate payload 计算的 `candidate_sha256`、从 Runner 实际 atomic JD 计算的 `jd_sha256`、`input_contract_status`、`result_status`、原始招聘页面与方向的来源标识、允许输入清单、隔离能力验证结果和创建时间标识。
 
 审计记录用于验证输入边界，不得把 Candidate 或 JD 的内容改写成结论后传入 Runner，也不得以审计为名让其他 Runner 获取原始材料。若需要保留原文，应只按既有隐私与保存边界保存原始输入；审计本身优先记录来源标识和完整性校验值，而不是复制不必要的个人内容。
 

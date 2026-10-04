@@ -5,17 +5,33 @@ description: 分析中国大陆校招与实习招聘中的职位描述（Job Des
 
 ---
 
-<!-- skill-version: v0.2.0 -->
+<!-- skill-version: v0.2.1 -->
+
+正式输出直接从专业标题、岗位一句话解读或快速结论开始。
+
+## v0.2 Recruitment Mode 检测与路由
+
+Campus Hiring、Internship Hiring、Experienced Hiring 是三个概念上独立的招聘模式。本版本只实现 Campus 与 Internship；Experienced 留待 v0.3。不得将前两者合并为一个 Early-Career mode，也不得套用社招职业阶段模型。
+
+对每个 atomic JD，按以下优先级确定招聘模式：①用户明确声明的求职目标（如校招/应届正式工作，或日常/暑期/寒假实习）；②没有用户声明时，JD 明示的校招/应届毕业生/graduate recruitment/new graduate/campus recruitment，或实习/实习生/internship/off-cycle/summer/winter internship；③两者均未明确时，才按下述中国大陆本科/硕士阶段作 fallback inference；④仍不能确定则为 `UNKNOWN / INFORMATION_INSUFFICIENT`。不能因为 Candidate 是学生就覆盖 JD 明示模式。若 JD 内部自相矛盾，先标记“JD 内部不一致，待向招聘方确认”，不得强行选边。
+
+阶段推断仅适用于普通四年制本科与三年制硕士：直接给出的大一/大二/大三→Internship，大四→Campus；研一/研二→Internship，研三→Campus。直接说明的当前年级优先；入学、毕业日期仅在该简化模型中能明确推出阶段时使用。明确的特殊学制标记 `OUTSIDE_CURRENT_STAGE_INFERENCE_SCOPE`；博士阶段标记 `OUT_OF_CURRENT_MODE_INFERENCE_SCOPE`，均不得硬套模型。
+
+若用户声明与 JD 明示模式相反，输出开头列明用户目标、JD 模式、`MODE_CONFLICT` 及当前 JD 不符合目标，第一轮停止正式完整匹配；不输出 overall `match_level`、模式资格判断或完整个人建议。只有用户后续明确要求继续，才进入 `CAPABILITY_ONLY_OVERRIDE`：可比较职责、技能、Candidate 证据和能力/证据缺口，必须标明“Capability-only comparison，非正式招聘资格判断”；忽略届别、学生身份、实习时长、每周天数等纯模式资格。涉及 Candidate 的能力对比仍须遵守下方隔离协议。
+
+若模式为 `UNKNOWN`，在正式分析前说明用户目标和 JD 模式均不明确、阶段信息不足、模式资格无法可靠判断；继续共享的 Candidate Evidence → Capability → JD Requirement 分析。模式专属项记 `NOT DETERMINABLE / INFORMATION GAP`；不得因模式未知判低匹配、判资格不符或停止全部分析。若其他证据足够，仍按全局规则校准能力匹配。
+
+Reference 路由：Campus 加载 [CAMPUS-HIRING](references/CAMPUS-HIRING.md)；Internship 加载 [INTERNSHIP-HIRING](references/INTERNSHIP-HIRING.md)；Unknown 不加载两者的模式假设。JD-only 只加载对应模式 Reference 与本文件；任何 Formal Candidate Matching（含 capability-only）还须加载 [隔离匹配评估协议](references/ISOLATED-EVALUATOR-PROTOCOL.md)。两种路由是独立、可组合的维度。模式 Reference 只定义专属资格与条件，Global 证据、缺口、四档匹配等级及输出契约仍以本文件为准。
+
+将 mode、学生身份、毕业窗口、availability、院校类别或 JD 内部歧义等可识别的不确定性，放在正式 match level 前用求职工具语气简洁提示。缺失 Candidate 信息不等于不符合；Qualification、Capability、用户偏好和信息缺口始终分开。Campus 与 Internship 的候选人证据都按 Relevance、Directness、Depth、Verifiability 检查实际内容，再建立 Experience → Capability → JD Requirement 证据链。实习、个人/课程项目、科研、课程、竞赛、社团、志愿经历、真实全职工作、证书与自述技能均可作为输入，但类型本身不自动证明能力，不设机械分值。Daily、Seasonal、Campus 的面试竞争差异不改变匹配阈值；不进行面试难度评分。
 
 ## v0.2.0 隔离匹配执行
 
-每次 Match Request 开始时，Parent 必须先且只创建一次 **immutable Candidate Snapshot**：它是用户本次提供的完整原始 Candidate 内容，未经总结、压缩、重写、补充或解释。若运行环境能让所有 Runner 稳定读取同一个不可变 artifact，可传递该 artifact 的引用；否则必须向每个 Runner 传递完整 Snapshot。单 JD、multi-direction normalization 与 batch JD 中的每个 fresh Match Runner 都必须读取同一份 Snapshot；真实性和隔离优先于节省 token。Candidate summary、Parent interpretation、前一个 Runner 或 Aggregator 的摘要、按岗位改写或为节省 token 压缩后的 Candidate，均不得作为 Runner 的 Candidate 输入。
+**Formal Candidate Matching 的 routing：**当同时存在用户本次提供的原始 Candidate 输入和当前 JD，且用户要求任何个人化分析（包括匹配度、投递资格、能力匹配、证据/信息缺口、简历诊断或个性化补强）时，必须在输出正式个人匹配结论前读取并遵守[隔离匹配评估协议](references/ISOLATED-EVALUATOR-PROTOCOL.md)。JD-only 请求不启动 Formal Candidate Matching：仍按下文解读 JD、分类要求和说明待确认信息，不生成个人 `match_level`、Candidate 能力缺口或个人化补强建议。
 
-在启动正式匹配前，必须先对原始招聘页面进行 JD normalization。**Atomic JD** 是用户可以独立选择或投递、并拥有独立职责或任职要求的一个岗位方向。若同一页面包含方向 A、方向 B、方向 C，应规范化为 JD-A、JD-B、JD-C；页面共同要求完整复制到每个 atomic JD，方向特有职责和要求只进入对应 atomic JD。规范化阶段不得读取、总结或重写 Candidate，不得结合 Candidate 替用户选择方向，也不得预判匹配等级。
+Formal Candidate Matching 的 binding invariants 是：每次 Match Request 只建立一份 immutable Candidate Snapshot；匹配前先将原始招聘页面 normalize 为 atomic JD；每个 atomic JD 必须由 fresh、isolated Runner 独立产生 individual Result；只有 individual Results 完成并记录后才可 Aggregation；Aggregator 不得重新匹配或改写任何 individual `match_level`。Snapshot 来源与完整性校验、atomic JD 的完整定义、Runner 输入边界、输入审计、Result/Registry schema、错误隔离、Aggregator 规则、batch/single 一致性、顺序不变性、Canary 和 `BLOCKED_RUNTIME_CAPABILITY` 的完整执行细节，以 Protocol 为唯一 canonical source。
 
-正式数据流必须为：`immutable Candidate Snapshot + (Raw recruiting page -> JD normalization -> atomic JD units) -> 每个 atomic JD 的 fresh Match Runner -> input-validated Result Registry -> Aggregator`。当任务需要对候选人与某个 atomic JD 给出正式匹配结论时，必须使用真正的 fresh Match Runner 独立执行 `match(atomic JD, immutable Candidate Snapshot) -> Result`。同一个 Match Runner 不得同时完成多个方向的 Candidate Matching；每个 atomic JD 只能产生一个独立 Result。当前聊天、其他 JD、先前 Result 或匹配等级、编排器的总结/猜测都不得进入 Runner 输入。每个 Result 的输入审计必须验证实际传入 Runner 的 Candidate SHA-256 等于 Snapshot SHA-256；不一致时标记 `INVALID_INPUT`，不得进入 Aggregator 的正式比较。
-
-运行时若不能实际创建并限制这个 fresh evaluator，必须停止正式匹配并向用户报告 `BLOCKED_RUNTIME_CAPABILITY`；不得用“忽略历史”的提示词冒充隔离。单 JD、同聊连续 JD 与多 JD 批处理的完整输入边界、结果 schema、Registry、聚合器和 Canary 验证要求见 [隔离匹配评估协议](references/ISOLATED-EVALUATOR-PROTOCOL.md)。本协议仅改变执行隔离，不改变下文的业务匹配规则、阈值和调试规则。
+运行时若不能实际满足 Protocol 的隔离能力或输入限制，必须停止 Formal Candidate Matching，不得伪造、猜测或沿用正式个人匹配结果；应按 Protocol 报告 `BLOCKED_RUNTIME_CAPABILITY`。本协议只约束执行隔离，不改变下文的业务匹配规则、阈值和调试规则。
 
 ## 一、术语定义
 
@@ -369,8 +385,8 @@ v0.2 主要面向：
 - 明确毕业日期范围；
 - 明确学历下限；
 - 明确要求某种学生或身份状态；
-- 明确实习时长；
-- 明确每周到岗天数；
+- 明确且不可放宽的实习时长；
+- 明确且不可放宽的每周到岗天数；
 - 明确要求必须持有某种执业资格。
 
 先把每条要求按可独立判断的最小单元拆开。若同一表述同时包含客观资格、模糊评价和能力要求，不得把整条作为硬性资格：只有其中有明确、可独立核验且 JD 支持其不可放宽的客观资格部分，才可单列为硬性资格；模糊评价须单列为无法精确判定的模糊条件；能力部分须按核心、次要或强要求分析。例如，“知名高校本科及以上”中的“本科及以上”与“知名高校”必须分开，后者不得因与学历同句就被当作硬性资格。候选人证据也必须分别对应各个拆分后的要求，不能以满足其中一项推定其余各项满足。
@@ -406,7 +422,7 @@ JD 明确写在“加分项”或“优先项”中的条件（包括审美、�
 
 ### 岗位条件与地点/到岗安排
 
-工作地点、Base、办公城市、现场/混合办公方式和到岗安排默认单列为岗位条件或到岗条件，不作为候选人硬性资格，也不作为能力证据。只有结合候选人明确提供的地点限制、能否搬迁、办公方式接受度或可到岗安排，才判断是否存在用户求职约束冲突；候选人未提供相关信息时，只能标为待确认，不能推定其不能或默认其接受。
+工作地点、Base、办公城市、现场/混合办公方式默认单列为岗位条件，不作为候选人硬性资格，也不作为能力证据。只有结合候选人明确提供的地点限制、能否搬迁或办公方式接受度，才判断用户求职约束冲突；未提供时标为待确认。实习时长、每周天数和开始时间按 Internship Reference 与 JD wording 判断；明确 mandatory 且 Candidate 明确冲突时可构成 condition / qualification mismatch，不能写成能力不足。
 
 ## 7.4 技术术语的解释边界
 
@@ -420,16 +436,7 @@ JD 明确写在“加分项”或“优先项”中的条件（包括审美、�
 
 # 八、资格判断
 
-v0.2 主要针对校招和实习，因此应重点分析：
-
-- 招聘届数；
-- 毕业时间范围；
-- 学生身份；
-- 学历；
-- 专业硬限制；
-- 实习周期；
-- 每周到岗要求；
-- 工作地点、Base/办公城市、办公方式和到岗安排等。
+资格判断先按 Recruitment Mode 加载对应 Reference。Campus 检查招聘方定义的届别/毕业窗口及明确的学历、专业、院校限制；Internship 检查 JD 明示的学生身份与 availability 条件。JD 没有要求时不得补出门槛，Candidate 未提供时标记信息缺口并继续其他分析。工作地点、Base、办公方式等仍按全局岗位条件处理。
 
 **资格判断与能力匹配必须分开。**
 
@@ -449,14 +456,7 @@ v0.2 主要针对校招和实习，因此应重点分析：
 
 否则会让用户错误理解为自己的能力不足。
 
-如果招聘信息同时提供：
-
-- “某届毕业生”；
-- 明确毕业日期区间；
-
-优先使用招聘方实际提供的毕业日期范围判断。
-
-工作地点、Base、办公城市、现场办公和到岗安排应与上述资格项和能力匹配分开单列。它们默认是岗位/到岗条件：只有候选人明确给出相冲突的地点或可用性约束时，才说明用户求职约束冲突；未提供该信息时，写为待确认，不得据此判断候选人能力或公司资格不符。
+工作地点、Base、办公城市和现场办公与资格项及能力匹配分开单列。Candidate 未提供地点约束时写待确认。实习 availability 的明确 mandatory 冲突按 Internship Reference 判断，未知安排不造成负面结论。
 
 # 九、用户偏好与招聘资格分开处理
 
@@ -550,8 +550,10 @@ v0.2 主要针对校招和实习，因此应重点分析：
 
 - **核心能力 / 强要求**：当前无可核验证据时不获得筛选信用，必须影响总体匹配校准；若多个核心项均无证据，且材料并非过于简略，可以得到“低匹配（当前材料下）”。
 - **优先项 / 加分项**：当前无证据只是不获得加分；不得因单个 bonus 缺失显著降低总体匹配，更不得单独导致低匹配。
-- **地点、到岗和实习周期**：候选人未提供时仍是待确认的岗位条件，不得当作能力证据缺口或能力负面项。
+- **地点、到岗和实习周期**：候选人未提供时仍是待确认信息，不得当作能力证据缺口或能力负面项；已明确相反的实习 mandatory availability 按 Internship Reference 判断。
 - **主观或模糊要求**：如好奇心、产品品味、优秀沟通，缺少充分行为证据时应写为“当前证据有限”或谨慎判断，不得机械按未满足处理。
+
+对于 JD 中明确的核心职责、核心能力或强要求，只要 Candidate 当前材料没有对应的可核验证据，就必须在 `resume_evidence_gaps` 中记录该要求。总体 `match_level` 为“信息不足”时也不得省略这一筛选证据缺口；同一项可以同时出现在 `information_gaps`，因为前者说明当前材料不能获得筛选信用，后者说明真实能力仍无法确认。该记录不得仅据无证据写入 `confirmed_gaps`，也不得表述为 Candidate 不会。Preferred / Bonus，以及地点、实习天数、实习时长、availability 等模式或后勤信息缺失，不进入 `resume_evidence_gaps`。
 
 可迁移经历可以说明候选人具备哪些相邻基础、为什么可能较快理解岗位，但不能替代当前 JD 核心要求的直接筛选证据。若候选人补充真实项目、任务和结果，应基于新原始材料重新评估，而不是把“当前未证明”写成对其能力的永久判断。
 
@@ -878,7 +880,7 @@ v0.2 不负责完整重写整份简历。
 
 # 十九、输出格式
 
-最终输出一份双层 Report。
+正常正式分析输出一份双层 Report。`MODE_CONFLICT` 第一轮及 Internship 学生身份明确不符时，依照前述停止规则，不生成完整正式 match level 或完整双层个人报告。`UNKNOWN` 模式不停止共享证据分析。
 
 ## 第一层：快速结论
 
