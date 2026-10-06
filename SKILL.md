@@ -5,7 +5,7 @@ description: 分析中国大陆校招、实习与社招岗位的职位描述（J
 
 ---
 
-<!-- skill-version: v0.3.0 -->
+<!-- skill-version: v0.3.1 -->
 
 正式输出直接从专业标题、岗位一句话解读或快速结论开始。
 
@@ -23,7 +23,7 @@ Reference 路由：Campus 加载 [CAMPUS-HIRING](references/CAMPUS-HIRING.md)；
 
 将 mode、学生身份、毕业窗口、availability、院校类别、工作年限、近期职业证据或 JD 内部歧义等可识别的不确定性，放在正式 match level 前简洁提示。缺失 Candidate 信息不等于不符合；Qualification、Capability、用户偏好和信息缺口始终分开。所有模式均按 Relevance、Directness、Depth、Verifiability 检查实际内容，再建立 Experience → Capability → JD Requirement 证据链；证据类型本身不自动证明能力，不设机械分值。
 
-## v0.3.0 隔离匹配执行
+## v0.3.1 隔离匹配执行
 
 **Formal Candidate Matching 的 routing：**当同时存在用户本次提供的原始 Candidate 输入和当前 JD，且用户要求任何个人化分析（包括匹配度、投递资格、能力匹配、证据/信息缺口、简历诊断或个性化补强）时，必须在输出正式个人匹配结论前读取并遵守[隔离匹配评估协议](references/ISOLATED-EVALUATOR-PROTOCOL.md)。JD-only 请求不启动 Formal Candidate Matching：仍按下文解读 JD、分类要求和说明待确认信息，不生成个人 `match_level`、Candidate 能力缺口或个人化补强建议。
 
