@@ -1,6 +1,6 @@
 # 隔离匹配评估协议
 
-本协议定义本 Skill 中候选人与 JD 的正式匹配如何执行。它只约束执行边界、记录和汇总；`SKILL.md` 中的全部业务匹配规则、匹配等级阈值和三个调试规则继续适用，不能由本协议改写。
+本协议定义本 Skill 中候选人与 JD 的正式匹配如何执行。它只约束执行边界、记录和汇总；`SKILL.md` 中的全部业务匹配规则与匹配等级阈值继续适用，不能由本协议改写。
 
 ## 1. 适用范围与运行状态
 
@@ -60,7 +60,7 @@ request_control {
 
 `request_control` 不属于 Candidate Snapshot。不同 `analysis_scope` 或 `override_source` 不得改变 `candidate_snapshot_sha256` 或 `candidate_sha256`。
 
-Runner 的禁止输入包括但不限于：父聊天全文或摘要；此前轮次上下文；其他 JD 或其片段/摘要/元数据；此前 Result、`match_level`、`qualification_status`、Registry 内容或错误记录；Candidate summary；Parent interpretation；前一个 Runner 的 Candidate 摘要；Aggregator summary；按岗位重新改写的 Candidate；为节省 token 自动压缩后的 Candidate；父编排器、Job Splitter、Aggregator 或用户对先前结论的总结、偏好、猜测、排序或目标等级；其他 Runner 的输出；批次排名、比较标准或 Canary 的预期答案。唯一例外是上述无自由文本的 `request_control`；不得将任何其他禁止项隐藏在该字段、系统级运行指令、例子、变量名、引用文本或工具返回中。
+Runner 的禁止输入包括但不限于：父聊天全文或摘要及任何此前轮次上下文；其他 JD 及其片段、摘要或元数据；此前 Result（含 `match_level`、`qualification_status`）、Registry 内容或错误记录；Candidate 的任何二次加工形式（Candidate summary、Parent interpretation、前一个 Runner 的 Candidate 摘要、Aggregator summary、按岗位重新改写的 Candidate、为节省 token 自动压缩后的 Candidate）；父编排器、Job Splitter、Aggregator 或用户对先前结论的总结、偏好、猜测、排序或目标等级；其他 Runner 的输出；批次排名、比较标准或 Canary 的预期答案。唯一例外是上述无自由文本的 `request_control`；不得将任何其他禁止项隐藏在该字段、系统级运行指令、例子、变量名、引用文本或工具返回中。
 
 Runner 开始匹配前，必须从其实际读取的 Candidate payload 计算 `candidate_sha256`，从其实际读取的当前 atomic JD 计算 `jd_sha256`。`candidate_sha256` 必须等于 Registry 中本次 Match Request 的 `candidate_snapshot_sha256`；不相等时不得执行或保留正式匹配结论，必须返回输入审计并记录 `input_contract_status: INVALID`、`result_status: INVALID_INPUT`。
 
@@ -88,10 +88,9 @@ Aggregator 只能在全部独立 Match Result 已记录后读取 Result Registry
 3. JD Normalizer 仅将原始招聘页面规范化为一个或多个 atomic JD，复制共同要求并保留方向特有要求，不读取 Candidate。
 4. Job Splitter 为每个 atomic JD 固定 `JD_ID`，保留内容和源元数据。
 5. 编排器为每个 `JD_ID` 设置符合第 2 节的 `request_control`，然后启动 fresh Match Runner；Runner 读取同一 Snapshot、当前唯一 atomic JD 与该控制对象。可并发或分批运行，但每个 Runner 的输入边界完全相同且彼此隔离。
-6. Runner 对实际 Candidate payload 与 atomic JD 计算 SHA-256；编排器验证 Candidate 哈希等于 Snapshot 哈希，并验证同一 Match Request 的所有 Runner 使用相同 `candidate_sha256`。
-7. 输入契约通过时记录 `input_contract_status: VALID`、`result_status: VALID`；Candidate 哈希不一致时记录 `input_contract_status: INVALID`、`result_status: INVALID_INPUT`，丢弃正式匹配正文。
-8. 单个 Runner 的首次执行错误只重试一次；第二次错误以 `result_status: ERROR` 写入 Registry，之后继续其他条目。重试仍使用同一 Snapshot。
-9. 当且仅当每个 `JD_ID` 都有 `VALID`、`INVALID_INPUT` 或 `ERROR` Registry 条目时，Aggregator 才可读取 Registry，且只聚合 `analysis_scope: formal_match` 的 `VALID` Result。
+6. Runner 按第 2 节对实际读取的 Candidate payload 与 atomic JD 计算 SHA-256；编排器验证 Candidate 哈希等于 Snapshot 哈希、且同一 Match Request 的所有 Runner 使用相同 `candidate_sha256`，据此记录 `input_contract_status: VALID`、`result_status: VALID`，或在 Candidate 哈希不一致时记录 `input_contract_status: INVALID`、`result_status: INVALID_INPUT`，并丢弃正式匹配正文。
+7. 单个 Runner 的首次执行错误按第 2 节只重试一次；第二次错误以 `result_status: ERROR` 写入 Registry，之后继续其他条目。
+8. 当且仅当每个 `JD_ID` 都有 `VALID`、`INVALID_INPUT` 或 `ERROR` Registry 条目时，Aggregator 才可读取 Registry，且只聚合 `analysis_scope: formal_match` 的 `VALID` Result。
 
 同聊连续单 JD 不是同一 Runner 的连续任务。即使 Candidate 未变，每个新 JD 也必须获得一个新的 Runner。多 JD batch 与逐次提交同一组 JD 应遵循相同的单 JD 隔离规则；可改变并发度，不可改变任一 Runner 的输入集合。
 
@@ -136,7 +135,7 @@ error_code: string | null
 input_audit_id: string
 ```
 
-其中 `candidate_sha256` 必须从真正传入并由该 Runner 读取的 Candidate payload 计算，`jd_sha256` 必须从该 Runner 实际读取的当前 atomic JD 计算；不同 atomic JD 应具有各自对应的 `jd_sha256`。同一个 Match Request 的所有 Runner 必须具有完全相同的 `candidate_sha256`，并与 `candidate_snapshot_sha256` 相等。`runner_id` 仅在 runtime 可获得时记录，否则为 `null`。
+各哈希按第 2 节从该 Runner 实际读取的 payload 计算，不同 atomic JD 各有对应的 `jd_sha256`；同一个 Match Request 的所有 Runner 必须具有完全相同的 `candidate_sha256`，并与 `candidate_snapshot_sha256` 相等。`runner_id` 仅在 runtime 可获得时记录，否则为 `null`。
 
 `INVALID_INPUT` 条目仍保留全部输入审计字段，但业务结果字段和 `match_level` 使用 `null`，不得进入 Aggregator 的正式比较。`ERROR` 条目仍保留 `JD_ID`、`run_id`、`runner_id`、`analysis_scope`、`result_status`、`attempt_count`、`error_code` 和输入审计关联；无法产生的业务字段使用 `null`，不得编造分析或匹配等级。Registry 是单向记录：它绝不可反向传给新的 Runner，也不得成为 Candidate、JD 或系统指令的一部分。
 
@@ -144,7 +143,7 @@ input_audit_id: string
 
 每次 Runner 调用都必须产生一个不可变的输入审计记录，至少包含：`input_audit_id`、`run_id`、`JD_ID`、`runner_id`（如可获得）、尝试次数、完整 `request_control`、`candidate_source`、`candidate_snapshot_sha256`、从 Runner 实际 Candidate payload 计算的 `candidate_sha256`、从 Runner 实际 atomic JD 计算的 `jd_sha256`、`input_contract_status`、`result_status`、原始招聘页面与方向的来源标识、允许输入清单、隔离能力验证结果和创建时间标识。
 
-审计记录用于验证输入边界，不得把 Candidate 或 JD 的内容改写成结论后传入 Runner，也不得以审计为名让其他 Runner 获取原始材料。若需要保留原文，应只按既有隐私与保存边界保存原始输入；审计本身优先记录来源标识和完整性校验值，而不是复制不必要的个人内容。
+审计记录用于验证输入边界，不得以审计为名让其他 Runner 获取原始材料；审计优先记录来源标识和完整性校验值，不复制不必要的个人内容，原文保留按既有隐私与保存边界执行。
 
 ## 6. Canary 验证性质
 
