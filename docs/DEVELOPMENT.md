@@ -30,7 +30,7 @@
 
 是正式 Skill 实现。
 
-`references/CAMPUS-HIRING.md`、`references/INTERNSHIP-HIRING.md` 与 `references/EXPERIENCED-HIRING.md` 分别保存模式专属规则；`references/ISOLATED-EVALUATOR-PROTOCOL.md` 是正式 Candidate Matching 执行细节的唯一 canonical source。`docs/RECRUITMENT-MODE-RULES.md` 记录人类可读的产品规则。模式路由与隔离执行路由是独立维度。
+`references/CAMPUS-HIRING.md`、`references/INTERNSHIP-HIRING.md` 与 `references/EXPERIENCED-HIRING.md` 分别保存模式专属规则；`references/ISOLATED-EVALUATOR-PROTOCOL.md` 定义严格隔离路径的执行细节；默认单岗位匹配直接按 `SKILL.md` 执行。`docs/RECRUITMENT-MODE-RULES.md` 记录人类可读的产品规则。模式路由与隔离执行路由是独立维度。
 
 docs/SPECIFICATION.md 定义产品要求。
 
@@ -65,7 +65,7 @@ docs/SPECIFICATION.md 定义产品要求。
 
 当前发布版本：
 
-> v0.3.0。
+> v0.4.0。
 
 ---
 

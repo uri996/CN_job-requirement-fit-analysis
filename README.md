@@ -2,7 +2,7 @@
 
 > 面向 **实习 / 校招 / 社招** 场景的岗位要求与个人经历匹配 Skill。
 
-![Version](https://img.shields.io/badge/version-v0.3.1-blue)
+![Version](https://img.shields.io/badge/version-v0.4.0-blue)
 ![Codex Skill](https://img.shields.io/badge/Codex-Skill-111111)
 ![招聘模式](https://img.shields.io/badge/招聘模式-3种-6f42c1)
 ![自动安装](https://img.shields.io/badge/自动安装-Windows%20%7C%20macOS%20%7C%20Linux-2ea44f)
@@ -611,7 +611,7 @@ A：当前版本主要按照 **Codex 的技能机制**进行开发和验证。�
 <details>
 <summary><strong>开发与验证说明</strong></summary>
 
-为了避免岗位之间互相影响，项目对多岗位匹配设计了独立分析流程。
+单岗位匹配默认直接执行。若明确要求严格独立隔离，单岗位也可走隔离协议。同一候选人匹配多个可独立投递的岗位时，先拆分岗位，再分别评估并汇总。只提供 JD 时，仅解读岗位。
 
 公开仓库中的主要规则分别放在：
 
@@ -627,16 +627,7 @@ references/EXPERIENCED-HIRING.md
 references/ISOLATED-EVALUATOR-PROTOCOL.md
 ```
 
-开发过程中还使用单独的测试数据验证：
-
-- 实习、校招、社招识别；
-- 资格条件与能力匹配分离；
-- 工作年限风险；
-- 证据缺口判断；
-- 转岗判断；
-- 多岗位独立分析；
-- 分析顺序变化是否影响结果；
-- 候选人输入是否保持一致。
+v0.4.0 的单岗位匹配已进行初步人工使用测试。多 JD 严格隔离尚未实测。目前没有正式量化的匹配准确率或受控性能基准。
 
 测试使用的私人材料、测试候选人资料和运行记录不会包含在公开版本中。
 

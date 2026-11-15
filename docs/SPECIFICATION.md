@@ -18,9 +18,9 @@ SKILL.md 是实际运行实现。
 
 - Baseline：v0.1.0
 - 发布基线：v0.2.1
-- 当前发布版本：v0.3.0
+- 当前发布版本：v0.4.0
 
-v0.3.0 面向中国大陆：
+当前版本面向中国大陆：
 
 - 校园招聘；
 - 应届生招聘；
@@ -205,13 +205,13 @@ Skill 至少支持两种运行模式。
 
 **Atomic JD** 是用户可以独立选择或投递、并拥有独立职责或任职要求的一个岗位方向。
 
-正式匹配的数据流为：
+单岗位匹配默认直接执行。单岗位可按用户明确要求启用严格隔离。同一候选人匹配多个 atomic JD 时走隔离路径，其数据流为：
 
 > Raw recruiting page → JD normalization → atomic JD units → 每个 atomic JD 单独进入 fresh Match Runner → Result Registry → Aggregator
 
 当同一招聘页面包含方向 A、方向 B、方向 C 时，必须形成 JD-A、JD-B、JD-C。页面共同要求完整复制到每个 atomic JD；方向特有职责与要求只进入对应 atomic JD。Normalization 不结合 Candidate 替用户选择方向，也不预判匹配等级。同一个 Match Runner 不得同时完成多个方向的 Candidate Matching；每个 atomic JD 分别产生一个 Result。
 
-每次 Match Request 必须在 normalization 前从用户本次提供的完整原始 Candidate 创建一次 immutable Candidate Snapshot；Normalizer 不读取或改写 Candidate，所有 atomic Runner 读取同一 Snapshot，并以实际 Candidate payload 的 SHA-256 通过输入契约校验后才可进入 Aggregator。
+每次走隔离路径的 Match Request 必须在 normalization 前从用户本次提供的完整原始 Candidate 创建一次 immutable Candidate Snapshot；Normalizer 不读取或改写 Candidate，所有 atomic Runner 读取同一 Snapshot，并以实际 Candidate payload 的 SHA-256 通过输入契约校验后才可进入 Aggregator。
 
 ---
 

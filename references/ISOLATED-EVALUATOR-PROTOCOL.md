@@ -1,10 +1,10 @@
 # 隔离匹配评估协议
 
-本协议定义本 Skill 中候选人与 JD 的正式匹配如何执行。它只约束执行边界、记录和汇总；`SKILL.md` 中的全部业务匹配规则与匹配等级阈值继续适用，不能由本协议改写。
+本协议定义本 Skill 中候选人与 JD 的**隔离匹配**如何执行。它只约束执行边界、记录和汇总；`SKILL.md` 中的全部业务匹配规则与匹配等级阈值继续适用，不能由本协议改写。
 
 ## 1. 适用范围与运行状态
 
-只有同时具备原始 Candidate 和当前 JD，且用户要求个人匹配、资格判断、能力/信息缺口或简历诊断时，才启动正式匹配。JD-only 分析仍按 `SKILL.md` 执行，不产生个人 `match_level`。
+本协议适用于 `SKILL.md` 执行路由确定的两种场景：任务数 N > 1 的多任务隔离匹配，或用户明确要求严格独立隔离的单任务。本协议的批量支持范围是**同一候选人对多个 atomic JD**；多个候选人对同一岗位的批量比较属于后续扩展，不通过本协议处理。N = 1 的轻量直接匹配按 `SKILL.md` 业务规则直接执行，不使用本协议的 Runner、Registry、Aggregator、输入审计或 Canary 机制，其结果也不得被描述为已实现本协议的技术级上下文隔离。JD-only 分析按 `SKILL.md` 执行，不产生个人 `match_level`。
 
 每次 Match Request 开始时，编排器必须先且只创建一次 **immutable Candidate Snapshot**。Snapshot 是用户本次提交的完整原始 Candidate payload，不得总结、压缩、重写、补充或解释；创建时立即记录 `candidate_source`，并从 Snapshot 的实际字节序列计算 `candidate_snapshot_sha256`。若运行环境支持所有 Runner 稳定读取同一不可变 Candidate artifact，可传递该 artifact 引用；否则必须向每个 Runner 传递完整 Snapshot。真实性和隔离优先于节省 token。
 
@@ -68,9 +68,9 @@ Runner 不得从 Registry 读取信息，不得请求或接受“参考前一个
 
 ### 编排器
 
-编排器只负责能力预检、在每个 Match Request 开始时创建一次 immutable Candidate Snapshot、调用 JD Normalizer 与 Job Splitter、为每个 `JD_ID` 创建隔离 Runner、设置并传入合规 `request_control`、把同一 Snapshot 与当前 atomic JD 交给 Runner、执行一次受限重试、验证输入哈希、写入 Registry，以及在全部结果结束后调用 Aggregator。编排器不得为不同 JD 生成 Candidate 变体，也不得以自由文本或 Parent 解释替代 `request_control`。编排器可以整理展示格式和保存结果，但不得重判证据、推导新的个人结论，或改写任一 Result 的 `match_level`。
+编排器负责运行时能力预检、按第 3 节执行整个编排流程、写入 Registry，以及在全部结果结束后调用 Aggregator。编排器不得为不同 JD 生成 Candidate 变体，也不得以自由文本或 Parent 解释替代 `request_control`。编排器可以整理展示格式和保存结果，但不得重判证据、推导新的个人结论，或改写任一 Result 的 `match_level`。
 
-个案发生执行错误时，编排器仅对该 `JD_ID` 使用相同的允许输入新建一次 fresh Runner 重试。第二次失败后记录 `ERROR` 并继续处理其他 JD；不得把错误个案的内容提供给其他 Runner。重试也必须满足所有隔离和输入限制。
+个案发生执行错误时，编排器仅对该 `JD_ID` 使用相同的允许输入新建一次 fresh Runner 重试，且重试必须使用同一 immutable Candidate Snapshot。第二次失败后记录 `ERROR` 并继续处理其他 JD；不得把错误个案的内容提供给其他 Runner。重试也必须满足所有隔离和输入限制。
 
 ### Aggregator
 
@@ -89,10 +89,10 @@ Aggregator 只能在全部独立 Match Result 已记录后读取 Result Registry
 4. Job Splitter 为每个 atomic JD 固定 `JD_ID`，保留内容和源元数据。
 5. 编排器为每个 `JD_ID` 设置符合第 2 节的 `request_control`，然后启动 fresh Match Runner；Runner 读取同一 Snapshot、当前唯一 atomic JD 与该控制对象。可并发或分批运行，但每个 Runner 的输入边界完全相同且彼此隔离。
 6. Runner 按第 2 节对实际读取的 Candidate payload 与 atomic JD 计算 SHA-256；编排器验证 Candidate 哈希等于 Snapshot 哈希、且同一 Match Request 的所有 Runner 使用相同 `candidate_sha256`，据此记录 `input_contract_status: VALID`、`result_status: VALID`，或在 Candidate 哈希不一致时记录 `input_contract_status: INVALID`、`result_status: INVALID_INPUT`，并丢弃正式匹配正文。
-7. 单个 Runner 的首次执行错误按第 2 节只重试一次；第二次错误以 `result_status: ERROR` 写入 Registry，之后继续其他条目。
+7. 单个 Runner 的首次执行错误按第 2 节只重试一次，重试仍使用同一 Snapshot；第二次错误以 `result_status: ERROR` 写入 Registry，之后继续其他条目。
 8. 当且仅当每个 `JD_ID` 都有 `VALID`、`INVALID_INPUT` 或 `ERROR` Registry 条目时，Aggregator 才可读取 Registry，且只聚合 `analysis_scope: formal_match` 的 `VALID` Result。
 
-同聊连续单 JD 不是同一 Runner 的连续任务。即使 Candidate 未变，每个新 JD 也必须获得一个新的 Runner。多 JD batch 与逐次提交同一组 JD 应遵循相同的单 JD 隔离规则；可改变并发度，不可改变任一 Runner 的输入集合。
+以下要求仅适用于已选择协议隔离路径的任务：同聊连续单 JD 不是同一 Runner 的连续任务，即使 Candidate 未变，每个新 JD 也必须获得一个新的 Runner；多 JD batch 与逐次提交同一组 JD 遵循相同的单 JD 隔离规则，可改变并发度，不可改变任一 Runner 的输入集合。默认 N = 1 轻量直接匹配不受本条约束。
 
 ## 4. 固定 Result schema 与 Registry
 
@@ -143,14 +143,14 @@ input_audit_id: string
 
 每次 Runner 调用都必须产生一个不可变的输入审计记录，至少包含：`input_audit_id`、`run_id`、`JD_ID`、`runner_id`（如可获得）、尝试次数、完整 `request_control`、`candidate_source`、`candidate_snapshot_sha256`、从 Runner 实际 Candidate payload 计算的 `candidate_sha256`、从 Runner 实际 atomic JD 计算的 `jd_sha256`、`input_contract_status`、`result_status`、原始招聘页面与方向的来源标识、允许输入清单、隔离能力验证结果和创建时间标识。
 
-审计记录用于验证输入边界，不得以审计为名让其他 Runner 获取原始材料；审计优先记录来源标识和完整性校验值，不复制不必要的个人内容，原文保留按既有隐私与保存边界执行。
+审计记录用于验证输入边界，不得把 Candidate 或 JD 改写成结论替代原始输入传给 Runner，也不得以审计为名让其他 Runner 获取原始材料；审计优先记录来源标识和完整性校验值，不复制不必要的个人内容，原文保留按既有隐私与保存边界执行。
 
 ## 6. Canary 验证性质
 
 Canary 测试必须使用合规的测试材料，并在不修改业务规则的前提下验证下列可观察性质：
 
 1. **同聊隔离**：在同一聊天先运行一个无关 JD 后，再运行目标 JD；目标 Runner 的审计输入中不得出现前一 JD、前一 Result 或等级。
-2. **batch 与 single 一致性**：同一原始 Candidate 和同一组原始 JD 分别以 batch 与逐个 single 提交；每个相同 `JD_ID` 的独立结论和关键证据分类应一致，或将运行不可控差异明确标为待调查，不能由 Aggregator 补正。
+2. **batch 与 single 一致性**：同一原始 Candidate 和同一组原始 JD 分别以 batch 与逐个 single 提交，且两者都经由本协议隔离执行；每个相同 `JD_ID` 的独立结论和关键证据分类应一致，或将运行不可控差异明确标为待调查，不能由 Aggregator 补正。该一致性只验证隔离路径内部的输入纪律，不涵盖、也不得声明 N = 1 轻量直接路径与隔离路径的结果一致。
 3. **顺序不变性**：调换 batch 中 JD 的排列后，以内容对应的 `JD_ID` 比较，任何单个 Runner 的输入集合和独立结论不应因排列顺序改变。
 4. **聚合器分离**：在 Registry 未完成前 Aggregator 不得运行；完成后 Aggregator 的输出必须可追溯到 Registry，且不得产生新的单 JD `match_level` 或改写已有等级。
 5. **错误隔离**：人为使一个 JD 运行失败时，只允许该 JD 重试一次；其余 JD 继续完成，第二次失败记录 `ERROR`，不污染其他 Runner。

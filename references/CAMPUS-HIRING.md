@@ -1,6 +1,6 @@
 # Campus Hiring
 
-Campus Hiring 指面向即将毕业或当届毕业 Candidate 的正式校招、应届招聘岗位。它是招聘模式，不是能力高低评价。仅在 `SKILL.md` 路由到 Campus 时加载；共享证据、缺口、匹配等级和 Formal Candidate Matching 执行规则仍由 `SKILL.md` 与 `ISOLATED-EVALUATOR-PROTOCOL.md` 决定。
+Campus Hiring 指面向即将毕业或当届毕业 Candidate 的正式校招、应届招聘岗位。它是招聘模式，不是能力高低评价。仅在 `SKILL.md` 路由到 Campus 时加载；共享证据、缺口、匹配等级和输出契约仍由 `SKILL.md` 决定，执行路径按其任务数量路由选择，隔离匹配的执行细节由 `ISOLATED-EVALUATOR-PROTOCOL.md` 决定。
 
 ## 届别与毕业窗口
 

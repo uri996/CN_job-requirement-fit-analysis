@@ -2,7 +2,7 @@
 
 ## Project Purpose
 
-This repository contains CN_job-requirement-fit-analysis, a Chinese-language Skill for analyzing mainland China campus recruitment and internship job descriptions and candidate-job fit.
+This repository contains CN_job-requirement-fit-analysis, a Chinese-language Skill for analyzing mainland China internship, campus recruitment, and experienced hiring job descriptions and candidate-job fit.
 
 Before modifying SKILL.md:
 

@@ -1,6 +1,6 @@
 # v0.3 招聘模式规则
 
-本文件供开发、规则维护和项目复盘使用。运行时由 `SKILL.md` 路由；模式专属细节以 Campus、Internship、Experienced 三份 Reference 为准，正式 Candidate Matching 还须遵守隔离协议。
+本文件供开发、规则维护和项目复盘使用。运行时由 `SKILL.md` 路由；模式专属细节以 Campus、Internship、Experienced 三份 Reference 为准，单岗位匹配默认直接执行，用户明确要求时可走严格隔离路径。同一候选人匹配多个 atomic JD 时须遵守隔离协议。
 
 ## 检测顺序
 
@@ -37,4 +37,4 @@ JD 内的模式、身份或时间表述相互冲突时，标记 JD 内部不一�
 
 Candidate 信息缺失不等于不符合；No Evidence 不等于 Cannot。资格、能力、用户偏好和信息缺口保持分开。所有模式以 Relevance、Directness、Depth、Verifiability 建立 Experience → Capability → JD Requirement 证据链，不用机械分数、JD bullet 数或模式设置阈值。
 
-正式匹配只使用高匹配、部分匹配、低匹配、信息不足四档。JD-only 不产生个人 match level。模式路由与执行隔离路由独立组合；Candidate 正式匹配都遵守 `ISOLATED-EVALUATOR-PROTOCOL.md`。
+正式匹配只使用高匹配、部分匹配、低匹配、信息不足四档。JD-only 不产生个人 match level。模式路由与执行隔离路由独立组合；严格隔离路径遵守 `ISOLATED-EVALUATOR-PROTOCOL.md`。

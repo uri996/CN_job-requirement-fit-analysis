@@ -1,6 +1,6 @@
 # Experienced Hiring（v0.3）
 
-Experienced Hiring 是与 Campus Hiring、Internship Hiring 并列的社招模式。它关注 Candidate 当前是否具有近期、持续且与目标岗位真实相关的职业证据；不以候选人曾经接触过某项技能作为当前职业能力证明。共享证据、缺口、四档 match level 与 Formal Candidate Matching 执行规则仍由 `SKILL.md` 和 `ISOLATED-EVALUATOR-PROTOCOL.md` 决定。
+Experienced Hiring 是与 Campus Hiring、Internship Hiring 并列的社招模式。它关注 Candidate 当前是否具有近期、持续且与目标岗位真实相关的职业证据；不以候选人曾经接触过某项技能作为当前职业能力证明。共享证据、缺口、四档 match level 与输出契约仍由 `SKILL.md` 决定，执行路径按其任务数量路由选择，隔离匹配的执行细节由 `ISOLATED-EVALUATOR-PROTOCOL.md` 决定。
 
 ## 近期职业证据与相关性
 

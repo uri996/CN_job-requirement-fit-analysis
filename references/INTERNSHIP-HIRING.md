@@ -1,6 +1,6 @@
 # Internship Hiring
 
-Internship Hiring 是独立招聘模式，包括日常/off-cycle 实习，以及暑期、寒假等 seasonal 实习。Subtype 用于理解时段、持续时间和每周天数，不自动改变能力匹配阈值。仅在 `SKILL.md` 路由到 Internship 时加载；共享规则与隔离执行仍由主文件和 Protocol 决定。
+Internship Hiring 是独立招聘模式，包括日常/off-cycle 实习，以及暑期、寒假等 seasonal 实习。Subtype 用于理解时段、持续时间和每周天数，不自动改变能力匹配阈值。仅在 `SKILL.md` 路由到 Internship 时加载；共享规则与执行路径由主文件按任务数量决定，隔离匹配的执行细节由 Protocol 决定。
 
 ## 学生身份
 
